@@ -88,14 +88,32 @@ def parse_zoom_start_time(iso_str: str) -> datetime.datetime:
     return datetime.datetime.fromisoformat(iso_str)
 
 
+def split_into_monthly_ranges(
+    from_date: datetime.date, to_date: datetime.date
+) -> list[tuple[str, str]]:
+    """期間を1ヶ月以内のチャンクに分割して返す。Zoom APIの制限対応。"""
+    ranges = []
+    current = from_date
+    while current <= to_date:
+        # 月末を計算（翌月1日の前日）
+        if current.month == 12:
+            next_month = current.replace(year=current.year + 1, month=1, day=1)
+        else:
+            next_month = current.replace(month=current.month + 1, day=1)
+        chunk_end = min(next_month - datetime.timedelta(days=1), to_date)
+        ranges.append((current.isoformat(), chunk_end.isoformat()))
+        current = next_month
+    return ranges
+
+
 def main():
     today = datetime.date.today()
     if len(sys.argv) >= 3:
-        from_date = sys.argv[1]
-        to_date = sys.argv[2]
+        from_date = datetime.date.fromisoformat(sys.argv[1])
+        to_date = datetime.date.fromisoformat(sys.argv[2])
     else:
-        from_date = (today - datetime.timedelta(days=30)).isoformat()
-        to_date = today.isoformat()
+        from_date = today - datetime.timedelta(days=30)
+        to_date = today
 
     print(f"対象期間: {from_date} 〜 {to_date}", file=sys.stderr)
 
@@ -106,10 +124,15 @@ def main():
     instructors = INSTRUCTORS
     print(f"講師名マスタ: {len(instructors)} 人", file=sys.stderr)
 
-    print("Zoom録画一覧を取得中...", file=sys.stderr)
+    print("Zoom録画一覧を取得中（月ごとに分割）...", file=sys.stderr)
     zoom = load_zoom_client_from_env()
-    recordings = zoom.list_recordings(from_date=from_date, to_date=to_date)
-    print(f"録画数: {len(recordings)} 件", file=sys.stderr)
+    monthly_ranges = split_into_monthly_ranges(from_date, to_date)
+    recordings = []
+    for chunk_from, chunk_to in monthly_ranges:
+        print(f"  {chunk_from} 〜 {chunk_to} を取得中...", file=sys.stderr)
+        chunk = zoom.list_recordings(from_date=chunk_from, to_date=chunk_to)
+        recordings.extend(chunk)
+    print(f"録画数合計: {len(recordings)} 件", file=sys.stderr)
 
     cal_service = build("calendar", "v3", credentials=creds)
 
