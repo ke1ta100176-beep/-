@@ -18,7 +18,6 @@ Zoom録画とGoogleカレンダー予定を照合し、講師名を特定する�
 import csv
 import datetime
 import os
-import re
 import sys
 
 from dotenv import load_dotenv
@@ -29,49 +28,28 @@ from zoom_client import load_zoom_client_from_env
 
 load_dotenv()
 
-SPREADSHEET_ID_ENV = "SPREADSHEET_ID"
-YANKE_SHEET_NAME = "やんけ"
-INSTRUCTOR_COLUMN = "A"
 WINDOW_MINUTES = 30
 
-
-def get_spreadsheet_id() -> str:
-    sid = os.environ.get(SPREADSHEET_ID_ENV, "")
-    if not sid:
-        raise ValueError(
-            f"環境変数 {SPREADSHEET_ID_ENV} が設定されていません。"
-            " .env に SPREADSHEET_ID=スプレッドシートのID を追記してください。"
-        )
-    return sid
-
-
-def extract_instructor_name(cell_value: str) -> str:
-    """「【ジャンル】名前」から名前部分だけ抽出する。"""
-    return re.sub(r"^【[^】]*】\s*", "", cell_value).strip()
-
-
-def get_instructor_names(creds) -> list[str]:
-    """スプレッドシートの「やんけ」シートA列から講師名一覧を取得する。"""
-    service = build("sheets", "v4", credentials=creds)
-    range_name = f"{YANKE_SHEET_NAME}!{INSTRUCTOR_COLUMN}:{INSTRUCTOR_COLUMN}"
-    result = (
-        service.spreadsheets()
-        .values()
-        .get(spreadsheetId=get_spreadsheet_id(), range=range_name)
-        .execute()
-    )
-    rows = result.get("values", [])
-    names = []
-    for row in rows:
-        if not row:
-            continue
-        raw = row[0].strip()
-        if not raw:
-            continue
-        name = extract_instructor_name(raw)
-        if name:
-            names.append(name)
-    return names
+# 「やんけ」シートのスクリーンショットから取得した講師名マスタ
+INSTRUCTORS = [
+    "テラ",
+    "まっつ",
+    "たびお",
+    "みき",
+    "Gaku",
+    "りく",
+    "REON",
+    "カナノ",
+    "あっくん",
+    "エイミー",
+    "りのま",
+    "篠原敬至",
+    "まひろ",
+    "めう",
+    "ゆうき",
+    "あろ",
+    "まさ",
+]
 
 
 def get_calendar_events_around(cal_service, dt_utc: datetime.datetime) -> list[dict]:
@@ -125,9 +103,8 @@ def main():
     token_file = os.environ.get("GOOGLE_TOKEN_FILE", "token.json")
     creds = get_google_credentials(client_secret_file, token_file)
 
-    print("講師名マスタを取得中...", file=sys.stderr)
-    instructors = get_instructor_names(creds)
-    print(f"講師数: {len(instructors)} 人", file=sys.stderr)
+    instructors = INSTRUCTORS
+    print(f"講師名マスタ: {len(instructors)} 人", file=sys.stderr)
 
     print("Zoom録画一覧を取得中...", file=sys.stderr)
     zoom = load_zoom_client_from_env()
