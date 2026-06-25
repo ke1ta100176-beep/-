@@ -20,8 +20,9 @@ downloads/ フォルダ内の音声ファイルを Whisper で文字起こしす
     large  : 最高精度。GPU推奨。CPUだと非常に遅い。
 
 事前準備:
-    pip install openai-whisper
+    pip install openai-whisper imageio[ffmpeg]
     ※ 初回実行時にモデルのデータ（数百MB〜数GB）が自動ダウンロードされます。
+    ※ ffmpeg は imageio-ffmpeg が自動でバンドルするため、別途インストール不要です。
 
 注意:
     CPUのみの環境では large モデルは1ファイルあたり数十分かかることがあります。
@@ -34,6 +35,29 @@ import sys
 
 
 DOWNLOAD_DIR = "downloads"
+
+
+def ensure_ffmpeg_in_path() -> None:
+    """
+    ffmpeg がシステムになければ imageio-ffmpeg のバンドル版を PATH に追加する。
+    これにより brew install ffmpeg なしで動作する。
+    """
+    import shutil
+    if shutil.which("ffmpeg"):
+        return  # すでに使える
+    try:
+        import imageio_ffmpeg
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        ffmpeg_dir = os.path.dirname(ffmpeg_exe)
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+        print(f"ffmpeg: imageio-ffmpeg のバンドル版を使用 ({ffmpeg_exe})", file=sys.stderr)
+    except ImportError:
+        print(
+            "警告: ffmpeg が見つかりません。\n"
+            "以下でインストールしてください:\n"
+            "    pip install imageio[ffmpeg]",
+            file=sys.stderr,
+        )
 TRANSCRIPT_DIR = "transcripts"
 COMBINED_FILE = "combined.txt"
 SUPPORTED_EXTS = {".m4a", ".mp4"}
@@ -69,6 +93,8 @@ def main():
         help="Whisper モデルサイズ（デフォルト: small）",
     )
     args = parser.parse_args()
+
+    ensure_ffmpeg_in_path()
 
     try:
         import whisper
