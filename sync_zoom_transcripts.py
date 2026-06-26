@@ -32,6 +32,8 @@ import os
 import re
 import sys
 
+from typing import Optional
+
 import requests
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
@@ -67,7 +69,7 @@ def sanitize_filename(name: str) -> str:
     return re.sub(r'[\\/:*?"<>|]', "_", name)
 
 
-def get_or_create_folder(drive_service, name: str, parent_id: str | None = None) -> str:
+def get_or_create_folder(drive_service, name: str, parent_id: Optional[str] = None) -> str:
     """
     Google ドライブに指定名のフォルダがあればそのIDを、なければ作成してIDを返す。
     """
@@ -109,7 +111,7 @@ def upload_to_drive(drive_service, filename: str, content: bytes, folder_id: str
     return file["id"]
 
 
-def download_transcript(url: str, access_token: str) -> bytes | None:
+def download_transcript(url: str, access_token: str) -> Optional[bytes]:
     """Zoom の VTT ファイルをダウンロードしてバイト列で返す。失敗したら None。"""
     headers = {"Authorization": f"Bearer {access_token}"}
     resp = requests.get(url, headers=headers, timeout=60)
