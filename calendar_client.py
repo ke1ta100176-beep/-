@@ -7,6 +7,7 @@ Google Calendar API クライアント（OAuth, デスクトップアプリ向�
 参考: https://developers.google.com/calendar/api/quickstart/python
 """
 import os
+from typing import Optional
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -15,7 +16,7 @@ from googleapiclient.discovery import build
 
 # 必要な権限。後でDrive/Sheetsも使う前提でまとめて要求しておく。
 SCOPES = [
-    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/spreadsheets.readonly",
 ]
@@ -50,6 +51,52 @@ class GoogleCalendarClient:
     def test_connection(self) -> dict:
         """認証が通るかどうかを確認する。カレンダー一覧を取得する。"""
         return self.service.calendarList().list(maxResults=5).execute()
+
+    def create_event(
+        self,
+        calendar_id: str,
+        summary: str,
+        start_iso: str,
+        end_iso: str,
+        description: str = "",
+        extended_properties: Optional[dict] = None,
+    ) -> dict:
+        """Google Calendarにイベントを作成する。終日イベントはstart_isoにT含まない形式で渡す。"""
+        def _time_obj(iso: str) -> dict:
+            if "T" in iso:
+                return {"dateTime": iso, "timeZone": "Asia/Tokyo"}
+            return {"date": iso}
+
+        body: dict = {
+            "summary": summary,
+            "description": description,
+            "start": _time_obj(start_iso),
+            "end": _time_obj(end_iso),
+        }
+        if extended_properties:
+            body["extendedProperties"] = {"private": extended_properties}
+        return self.service.events().insert(calendarId=calendar_id, body=body).execute()
+
+    def find_events_by_private_property(
+        self,
+        calendar_id: str,
+        key: str,
+        value: str,
+        time_min: Optional[str] = None,
+        time_max: Optional[str] = None,
+    ) -> list[dict]:
+        """extendedProperties.private の key=value でイベントを検索する（重複チェック用）。"""
+        params: dict = {
+            "calendarId": calendar_id,
+            "privateExtendedProperty": f"{key}={value}",
+            "singleEvents": True,
+        }
+        if time_min:
+            params["timeMin"] = time_min
+        if time_max:
+            params["timeMax"] = time_max
+        resp = self.service.events().list(**params).execute()
+        return resp.get("items", [])
 
     def list_events(
         self, time_min_iso: str, time_max_iso: str, calendar_id: str = "primary"

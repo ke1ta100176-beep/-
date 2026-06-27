@@ -81,10 +81,34 @@ def get_calendar_events_around(cal_service, dt_utc: datetime.datetime) -> list[d
     return resp.get("items", [])
 
 
+def katakana_to_hiragana(text: str) -> str:
+    """カタカナをひらがなに変換する。"""
+    return "".join(
+        chr(ord(c) - 0x60) if "ァ" <= c <= "ン" else c for c in text
+    )
+
+
+def normalize_timetree_title(title: str) -> str:
+    """
+    TimeTree入力形式「14アロ」→「あろ」に変換する。
+    先頭の数字（時刻）を除去し、カタカナをひらがなに変換する。
+    """
+    stripped = title.lstrip("0123456789")
+    return katakana_to_hiragana(stripped)
+
+
 def find_matching_instructors(event_titles: list[str], instructors: list[str]) -> list[str]:
-    """カレンダー予定タイトル群の中に含まれる講師名を全て返す。"""
-    combined = " ".join(event_titles)
-    return [name for name in instructors if name in combined]
+    """カレンダー予定タイトル群の中に含まれる講師名を全て返す。
+    TimeTree形式（「14アロ」）はひらがな変換して照合する。
+    """
+    normalized_titles = [normalize_timetree_title(t) for t in event_titles]
+    combined_raw = " ".join(event_titles)
+    combined_normalized = " ".join(normalized_titles)
+    return [
+        name
+        for name in instructors
+        if name in combined_raw or name in combined_normalized
+    ]
 
 
 def parse_zoom_start_time(iso_str: str) -> datetime.datetime:

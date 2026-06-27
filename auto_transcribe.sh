@@ -9,6 +9,10 @@ TO_DATE=$(date +%Y-%m-%d)
 
 echo "[$(date)] 同期開始: $FROM_DATE 〜 $TO_DATE" >> ~/Desktop/zoom-project/auto_transcribe.log
 
+# TimeTree → Google Calendar 同期（14日先まで）
+echo "[$(date)] TimeTree同期開始" >> ~/Desktop/zoom-project/auto_transcribe.log
+/usr/bin/python3 sync_to_gcal.py 14 >> ~/Desktop/zoom-project/auto_transcribe.log 2>&1
+
 /usr/bin/python3 sync_zoom_transcripts.py "$FROM_DATE" "$TO_DATE" >> ~/Desktop/zoom-project/auto_transcribe.log 2>&1
 
 echo "[$(date)] 完了" >> ~/Desktop/zoom-project/auto_transcribe.log
