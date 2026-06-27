@@ -98,6 +98,35 @@ class GoogleCalendarClient:
         resp = self.service.events().list(**params).execute()
         return resp.get("items", [])
 
+    def delete_event(self, calendar_id: str, event_id: str) -> None:
+        """イベントを削除する。"""
+        self.service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+
+    def patch_event_time(
+        self,
+        calendar_id: str,
+        event_id: str,
+        start_iso: str,
+        end_iso: str,
+    ) -> None:
+        """イベントの開始・終了時刻だけを更新する。"""
+        self.service.events().patch(
+            calendarId=calendar_id,
+            eventId=event_id,
+            body={
+                "start": {"dateTime": start_iso, "timeZone": "Asia/Tokyo"},
+                "end":   {"dateTime": end_iso,   "timeZone": "Asia/Tokyo"},
+            },
+        ).execute()
+
+    def list_all_events(self, calendar_id: str = "primary") -> list[dict]:
+        """カレンダーの全イベントを取得する（2020〜2030年の範囲）。"""
+        return self.list_events(
+            time_min_iso="2020-01-01T00:00:00+09:00",
+            time_max_iso="2030-12-31T23:59:59+09:00",
+            calendar_id=calendar_id,
+        )
+
     def list_events(
         self, time_min_iso: str, time_max_iso: str, calendar_id: str = "primary"
     ) -> list[dict]:
