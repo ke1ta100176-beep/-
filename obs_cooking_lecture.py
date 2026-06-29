@@ -15,19 +15,14 @@ OBS_PASSWORD = ""  # Set in OBS WebSocket Server Settings
 # Scene names — create these in OBS beforehand or use setup_scenes()
 SCENES = {
     "zoom": "グルコン_Zoom画面",
-    "recipe": "グルコン_レシピ表示",
-    "camera_recipe": "グルコン_カメラ+レシピ",
     "camera_full": "グルコン_カメラ全画面",
-    "break": "グルコン_休憩画面",
 }
 
 # Cooking lecture flow: (scene_key, duration_seconds, label)
 LECTURE_FLOW = [
-    ("zoom", 0, "オープニング・自己紹介"),         # manual advance
-    ("recipe", 0, "本日のメニュー説明"),
-    ("camera_recipe", 0, "実演開始"),
+    ("zoom", 0, "オープニング・自己紹介"),
+    ("camera_full", 0, "料理実演"),
     ("zoom", 0, "質疑応答"),
-    ("break", 0, "休憩"),
     ("camera_full", 0, "仕上げ実演"),
     ("zoom", 0, "クロージング"),
 ]
