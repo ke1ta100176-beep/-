@@ -106,7 +106,11 @@ export function AccountManager({
         min={0}
         className="w-32"
       />
-      <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+      <Select
+        value={categoryId}
+        onChange={(e) => setCategoryId(e.target.value)}
+        aria-label="カテゴリ"
+      >
         <option value="">カテゴリなし</option>
         {categories.map((c) => (
           <option key={c.id} value={c.id}>
@@ -123,7 +127,11 @@ export function AccountManager({
       >
         +カテゴリ
       </Button>
-      <Select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+      <Select
+        value={groupId}
+        onChange={(e) => setGroupId(e.target.value)}
+        aria-label="ベンチマークグループ"
+      >
         <option value="">グループなし</option>
         {groups.map((g) => (
           <option key={g.id} value={g.id}>

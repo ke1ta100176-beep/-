@@ -62,6 +62,7 @@ export function CollectionPicker({ postId }: { postId: string }) {
         value={selected}
         onChange={(e) => setSelected(e.target.value)}
         className="w-44"
+        aria-label="追加先コレクション"
       >
         <option value="">コレクションを選択</option>
         {collections.map((c) => (

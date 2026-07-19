@@ -12,9 +12,19 @@ export async function GET(request: NextRequest) {
     await requireRole("viewer");
     const { searchParams } = request.nextUrl;
     const filterJson = searchParams.get("filter");
-    const raw = filterJson
-      ? JSON.parse(filterJson)
-      : Object.fromEntries(searchParams.entries());
+    let raw: unknown;
+    if (filterJson) {
+      try {
+        raw = JSON.parse(filterJson);
+      } catch {
+        return NextResponse.json(
+          { error: "filter パラメータが不正なJSONです" },
+          { status: 400 }
+        );
+      }
+    } else {
+      raw = Object.fromEntries(searchParams.entries());
+    }
     const filter = postFilterSchema.parse(raw);
     const result = await queryPosts(filter);
     return NextResponse.json(result);

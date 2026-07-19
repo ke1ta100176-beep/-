@@ -136,7 +136,9 @@ export async function importNormalizedPosts(
   let metricsAppended = 0;
 
   for (const item of posts) {
-    const account = await prisma.account.upsert({
+    // 1行=1トランザクション: アカウントupsert〜履歴追記が部分的に残らないようにする
+    await prisma.$transaction(async (tx) => {
+    const account = await tx.account.upsert({
       where: { username: item.account.username },
       update:
         item.account.followersCount !== undefined
@@ -151,7 +153,7 @@ export async function importNormalizedPosts(
       },
     });
 
-    const existing = await prisma.post.findUnique({
+    const existing = await tx.post.findUnique({
       where: {
         accountId_platformPostId: {
           accountId: account.id,
@@ -163,7 +165,7 @@ export async function importNormalizedPosts(
     let postId: string;
     if (existing) {
       // メタデータは新しい情報があれば補完更新（数値はここでは触らない）
-      await prisma.post.update({
+      await tx.post.update({
         where: { id: existing.id },
         data: {
           caption: item.details.caption ?? existing.caption,
@@ -180,7 +182,7 @@ export async function importNormalizedPosts(
       postId = existing.id;
       updated++;
     } else {
-      const post = await prisma.post.create({
+      const post = await tx.post.create({
         data: {
           accountId: account.id,
           platformPostId: item.details.platformPostId,
@@ -200,9 +202,10 @@ export async function importNormalizedPosts(
 
     if (item.metrics) {
       // 同一投稿の再インポートでも履歴は上書きせず追記される
-      await appendMetricSnapshot(postId, item.metrics, sourceType);
+      await appendMetricSnapshot(postId, item.metrics, sourceType, tx);
       metricsAppended++;
     }
+    });
   }
 
   return { created, updated, metricsAppended };

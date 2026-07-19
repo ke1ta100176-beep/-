@@ -29,8 +29,13 @@ function LoginForm() {
       setError("メールアドレスまたはパスワードが正しくありません");
       return;
     }
+    // オープンリダイレクト対策: 同一オリジンのパスのみ許可（"//evil.com" も拒否）
     const callbackUrl = searchParams.get("callbackUrl") ?? "/";
-    router.push(callbackUrl.startsWith("/") ? callbackUrl : "/");
+    const safeUrl =
+      callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")
+        ? callbackUrl
+        : "/";
+    router.push(safeUrl);
     router.refresh();
   };
 

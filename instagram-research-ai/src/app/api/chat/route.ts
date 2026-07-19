@@ -33,11 +33,14 @@ export async function POST(request: NextRequest) {
       sessionId = session.id;
     }
 
-    const historyRows = await prisma.chatMessage.findMany({
-      where: { sessionId, role: { in: ["user", "assistant"] } },
-      orderBy: { createdAt: "asc" },
-      take: 20,
-    });
+    // 直近20件をコンテキストにする（古い順に並べ直して渡す）
+    const historyRows = (
+      await prisma.chatMessage.findMany({
+        where: { sessionId, role: { in: ["user", "assistant"] } },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      })
+    ).reverse();
     const history = historyRows.map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,

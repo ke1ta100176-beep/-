@@ -133,18 +133,26 @@ export async function analyzePost(
           ? error.message
           : String(error);
 
+    // 失敗時: 既存の正常分析があればそれを isLatest のまま残し、
+    // 失敗記録は履歴としてのみ追加する（一覧の「分析済み」状態を壊さない）。
     const analysis = await prisma.$transaction(async (tx) => {
-      await tx.aiAnalysis.updateMany({
-        where: { postId, isLatest: true },
-        data: { isLatest: false },
+      const hasOkLatest = await tx.aiAnalysis.findFirst({
+        where: { postId, isLatest: true, status: { in: ["ok", "low_confidence"] } },
+        select: { id: true },
       });
+      if (!hasOkLatest) {
+        await tx.aiAnalysis.updateMany({
+          where: { postId, isLatest: true },
+          data: { isLatest: false },
+        });
+      }
       return tx.aiAnalysis.create({
         data: {
           postId,
           status: "failed",
           errorMessage: message.slice(0, 1000),
           promptVersion: POST_TAGGING_PROMPT_VERSION,
-          isLatest: true,
+          isLatest: !hasOkLatest,
         },
       });
     });

@@ -52,21 +52,21 @@ export function PostFilterBar({
           defaultValue={get("q")}
           className="w-64"
         />
-        <Select name="sortBy" defaultValue={get("sortBy") || "trendScore"}>
+        <Select name="sortBy" aria-label="並び替え" defaultValue={get("sortBy") || "trendScore"}>
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
         </Select>
-        <Select name="class" defaultValue={get("class")}>
+        <Select name="class" aria-label="判定で絞り込み" defaultValue={get("class")}>
           <option value="">判定: すべて</option>
           <option value="grew">伸びた</option>
           <option value="normal">通常</option>
           <option value="underperformed">伸び悩み</option>
           <option value="too_early">判定前</option>
         </Select>
-        <Select name="analyzed" defaultValue={get("analyzed")}>
+        <Select name="analyzed" aria-label="AI分析状態で絞り込み" defaultValue={get("analyzed")}>
           <option value="">AI分析: すべて</option>
           <option value="true">分析済み</option>
           <option value="false">未分析</option>
@@ -86,7 +86,7 @@ export function PostFilterBar({
 
       {expanded && (
         <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 md:grid-cols-4">
-          <Select name="category" defaultValue={get("category")}>
+          <Select name="category" aria-label="カテゴリで絞り込み" defaultValue={get("category")}>
             <option value="">カテゴリ: すべて</option>
             {categories.map((c) => (
               <option key={c.slug} value={c.slug}>
@@ -94,7 +94,7 @@ export function PostFilterBar({
               </option>
             ))}
           </Select>
-          <Select name="group" defaultValue={get("group")}>
+          <Select name="group" aria-label="グループで絞り込み" defaultValue={get("group")}>
             <option value="">グループ: すべて</option>
             {groups.map((g) => (
               <option key={g.slug} value={g.slug}>
@@ -102,7 +102,7 @@ export function PostFilterBar({
               </option>
             ))}
           </Select>
-          <Select name="hook" defaultValue={get("hook")}>
+          <Select name="hook" aria-label="フックで絞り込み" defaultValue={get("hook")}>
             <option value="">フック: すべて</option>
             {HOOK_TYPES.map((h) => (
               <option key={h} value={h}>
@@ -110,7 +110,7 @@ export function PostFilterBar({
               </option>
             ))}
           </Select>
-          <Select name="cta" defaultValue={get("cta")}>
+          <Select name="cta" aria-label="CTAで絞り込み" defaultValue={get("cta")}>
             <option value="">CTA: すべて</option>
             {CTA_TYPES.map((c) => (
               <option key={c} value={c}>
