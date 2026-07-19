@@ -16,7 +16,9 @@
     "job:fetch": "tsx scripts/runJob.ts fetch-posts",
     "job:scores": "tsx scripts/runJob.ts compute-scores",
     "job:analyze": "tsx scripts/runJob.ts analyze-posts",
-    "job:report": "tsx scripts/runJob.ts generate-report"
+    "job:report": "tsx scripts/runJob.ts generate-report",
+    "postinstall": "prisma generate",
+    "user:create": "tsx scripts/createUser.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",

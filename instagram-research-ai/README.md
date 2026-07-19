@@ -157,3 +157,19 @@ DATABASE_URL=postgresql://postgres@localhost:5432/instagram_research_test npx pr
 4. **pgvector類似検索**: キャプション・AI要約の埋め込みによる類似投稿検索（チャットのツールとして追加）
 5. **実データProvider**: 外部取得サービス連携（Providerパターンで追加）
 6. **動画解析**: 冒頭構成・テロップ量などの自動抽出
+
+## 本番デプロイ（Vercel + Supabase）
+
+1. **Supabase**でプロジェクト作成 → Settings > Database から接続文字列を取得
+   - `DATABASE_URL`: Transaction pooler（ポート6543、`?pgbouncer=true` 付き）
+   - `DIRECT_URL`: Direct connection（ポート5432）
+2. ローカルからスキーマ適用と初期ユーザー作成:
+   ```bash
+   DATABASE_URL=<DIRECT_URLの値> DIRECT_URL=<DIRECT_URLの値> npx prisma migrate deploy
+   DATABASE_URL=<DIRECT_URLの値> DIRECT_URL=<同> npx tsx scripts/createUser.ts you@example.com <パスワード> 自分 admin
+   ```
+   （モックデータで試す場合は同様に `npm run seed` も可）
+3. **Vercel**でリポジトリをインポート → **Root Directory を `instagram-research-ai` に設定**
+4. Vercelの環境変数に設定: `DATABASE_URL`（pooler）/ `DIRECT_URL` / `AUTH_SECRET` / `CRON_SECRET` / `ANTHROPIC_API_KEY` / `AI_PROVIDER=anthropic` / `DATA_SOURCE=mock` / `AUTH_TRUST_HOST=true`
+5. デプロイ後、発行されたURLでログイン。スマホでは「ホーム画面に追加」でPWAとして利用可能
+6. 定期ジョブ: `vercel.json` に日次のスコア再計算+レポート生成を定義済み（VercelはCRON_SECRETを自動でAuthorizationヘッダーに付与）。Hobbyプランは1日1回まで。15〜30分間隔で回す場合は cron-job.org 等から `POST /api/internal/jobs/<job>`（`Authorization: Bearer <CRON_SECRET>`）を呼ぶ

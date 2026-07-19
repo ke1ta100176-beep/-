@@ -29,7 +29,7 @@ function verifyCronSecret(request: NextRequest): boolean {
   return timingSafeEqual(Buffer.from(provided), Buffer.from(secret));
 }
 
-export async function POST(
+async function handleJobRequest(
   request: NextRequest,
   { params }: { params: Promise<{ job: string }> }
 ) {
@@ -55,3 +55,7 @@ export async function POST(
     status: summary.status === "failed" ? 500 : 200,
   });
 }
+
+export const POST = handleJobRequest;
+// Vercel CronはGETで呼び出すため両対応にする（認証は共通のCRON_SECRET）
+export const GET = handleJobRequest;
