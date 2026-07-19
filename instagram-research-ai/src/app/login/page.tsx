@@ -17,7 +17,7 @@ function LoginForm() {
 
   // 初回デプロイ直後（ユーザー0人）は初回セットアップ画面へ誘導する
   useEffect(() => {
-    fetch("/api/setup")
+    fetch("/api/setup", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.needsSetup) router.replace("/setup");
