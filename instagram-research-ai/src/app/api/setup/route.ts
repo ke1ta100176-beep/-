@@ -65,8 +65,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** セットアップが必要かどうか（画面の出し分け用） */
+// あらゆるキャッシュ層を確実に無効化する（CDN/ブラウザ）
+export const dynamic = "force-dynamic";
+
+/** セットアップが必要かどうか（画面の出し分け用）。診断用にDBホスト名も返す。 */
 export async function GET() {
   const userCount = await prisma.user.count();
-  return NextResponse.json({ needsSetup: userCount === 0 });
+  const hostMatch = (process.env.DATABASE_URL ?? "").match(/@([^:/?]+)/);
+  return NextResponse.json(
+    {
+      needsSetup: userCount === 0,
+      userCount,
+      dbHost: hostMatch?.[1] ?? "unknown",
+    },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }
