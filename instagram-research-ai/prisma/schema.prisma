@@ -1,0 +1,403 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // マイグレーション用の直接接続（Supabaseでは5432ポートのDirect connection）。
+  // ローカル開発では DATABASE_URL と同じ値でよい。
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  admin
+  member
+  viewer
+}
+
+enum SourceType {
+  manual
+  csv
+  mock
+  share
+  scraping_api
+}
+
+enum FetchStatus {
+  pending
+  ok
+  partial
+  failed
+}
+
+enum AnalysisStatus {
+  ok
+  failed
+  low_confidence
+}
+
+enum PerformanceClass {
+  grew
+  normal
+  underperformed
+  too_early
+  insufficient_data
+}
+
+enum JobType {
+  fetch_accounts
+  fetch_posts
+  compute_scores
+  analyze_posts
+  generate_report
+  ingest
+}
+
+enum JobStatus {
+  running
+  success
+  partial
+  failed
+}
+
+enum ReportType {
+  daily
+  weekly
+  adhoc
+}
+
+enum ChatRole {
+  user
+  assistant
+  system
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String
+  passwordHash String
+  role         Role          @default(member)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  collections  Collection[]
+  chatSessions ChatSession[]
+  ingestTokens IngestToken[]
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  accounts    Account[]
+}
+
+model BenchmarkGroup {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  accounts    Account[]
+}
+
+/// ジャンル別のAI分析属性スキーマ定義（全ジャンル対応の中核）
+model GenreProfile {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  /// ジャンル固有属性の定義: [{ key, label, type: "string"|"string[]", description }]
+  attributeSchema Json
+  /// AIプロンプトへ挿入するジャンル固有の指示文
+  promptGuidance  String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Account {
+  id               String          @id @default(cuid())
+  username         String          @unique
+  displayName      String?
+  profileUrl       String?
+  followersCount   Int             @default(0)
+  category         Category?       @relation(fields: [categoryId], references: [id])
+  categoryId       String?
+  benchmarkGroup   BenchmarkGroup? @relation(fields: [benchmarkGroupId], references: [id])
+  benchmarkGroupId String?
+  isActive         Boolean         @default(true)
+  sourceType       SourceType      @default(manual)
+  lastCheckedAt    DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  posts            Post[]
+
+  @@index([categoryId])
+  @@index([benchmarkGroupId])
+  @@index([isActive])
+}
+
+/// 投稿メタデータのみ。数値は post_metrics（追記専用）に保存し、
+/// このテーブルには可変の再生数カラムを置かない（上書き設計の禁止）。
+model Post {
+  id              String           @id @default(cuid())
+  account         Account          @relation(fields: [accountId], references: [id])
+  accountId       String
+  platformPostId  String
+  instagramUrl    String
+  postedAt        DateTime?
+  caption         String?
+  hashtags        String[]         @default([])
+  audioName       String?
+  thumbnailUrl    String?
+  mediaUrl        String?
+  durationSeconds Int?
+  sourceType      SourceType       @default(manual)
+  fetchStatus     FetchStatus      @default(pending)
+  firstFetchedAt  DateTime?
+  lastFetchedAt   DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  metrics         PostMetric[]
+  latestMetric    PostLatestMetric?
+  analyses        AiAnalysis[]
+  scores          PostScore[]
+  collections     CollectionPost[]
+
+  @@unique([accountId, platformPostId])
+  @@index([accountId, postedAt(sort: Desc)])
+  @@index([fetchStatus])
+  @@index([postedAt])
+}
+
+/// 追記専用の数値スナップショット。UPDATE/UPSERT経路をコード上に作らないこと。
+model PostMetric {
+  id               String      @id @default(cuid())
+  post             Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId           String
+  views            Int?
+  likes            Int?
+  comments         Int?
+  saves            Int?
+  shares           Int?
+  followersCount   Int?
+  hoursSincePosted Float?
+  measuredAt       DateTime
+  sourceType       SourceType
+  fetchStatus      FetchStatus @default(ok)
+  createdAt        DateTime    @default(now())
+
+  @@index([postId, measuredAt])
+  @@index([measuredAt])
+}
+
+/// 一覧表示用の読み取りキャッシュ。真実のソースではなく PostMetric から再構築可能。
+model PostLatestMetric {
+  postId           String    @id
+  post             Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  views            Int?
+  likes            Int?
+  comments         Int?
+  saves            Int?
+  shares           Int?
+  followersCount   Int?
+  viewsDelta       Int?
+  viewsPerHour     Float?
+  growthRate       Float?
+  followerRatio    Float?
+  /// 最新スコアの複製（一覧ソート用キャッシュ。真実は PostScore）
+  trendScore       Float?
+  performanceClass PerformanceClass?
+  measuredAt       DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  @@index([views])
+  @@index([viewsPerHour])
+  @@index([followerRatio])
+  @@index([trendScore])
+}
+
+/// 追記専用。再分析は新規行を挿入し isLatest をフリップする。
+model AiAnalysis {
+  id               String         @id @default(cuid())
+  post             Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId           String
+  mainGenre        String?
+  subGenres        String[]       @default([])
+  themes           String[]       @default([])
+  persona          String?
+  painPoints       String[]       @default([])
+  benefits         String[]       @default([])
+  hookType         String?
+  hookText         String?
+  ctaType          String?
+  emotions         String[]       @default([])
+  appealType       String?
+  personalityLevel String?
+  videoStructure   String?
+  summary          String?
+  reasoning        String?
+  /// ジャンル固有属性（GenreProfile.attributeSchema に従う動的キー）
+  attributes       Json?
+  confidenceScore  Float?
+  analysisJson     Json?
+  modelName        String?
+  promptVersion    String?
+  status           AnalysisStatus @default(ok)
+  errorMessage     String?
+  isLatest         Boolean        @default(true)
+  analyzedAt       DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+
+  @@index([postId, isLatest])
+  @@index([postId, analyzedAt(sort: Desc)])
+  @@index([hookType])
+  @@index([ctaType])
+  @@index([mainGenre])
+}
+
+/// 追記専用・バージョン付きスコア。
+model PostScore {
+  id                   String           @id @default(cuid())
+  post                 Post             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId               String
+  trendScore           Float
+  velocityScore        Float
+  growthScore          Float
+  followerRatioScore   Float
+  freshnessScore       Float
+  accountBaselineScore Float
+  performanceClass     PerformanceClass
+  /// 分類基準値の出所: "account" | "category" | "none"
+  baselineSource       String?
+  rawBreakdown         Json?
+  calculationVersion   Int
+  isLatest             Boolean          @default(true)
+  calculatedAt         DateTime         @default(now())
+  createdAt            DateTime         @default(now())
+
+  @@index([postId, isLatest])
+  @@index([trendScore(sort: Desc)])
+  @@index([performanceClass])
+}
+
+/// スコア重み+分類しきい値の単一バージョン付きポリシー。編集=新バージョン行の追加。
+model ScoringConfig {
+  id                       String   @id @default(cuid())
+  version                  Int      @unique
+  /// トレンドスコアの重み・正規化定数
+  weights                  Json
+  /// 成功・通常・伸び悩みの分類しきい値
+  classificationThresholds Json
+  isActive                 Boolean  @default(false)
+  note                     String?
+  createdBy                String?
+  createdAt                DateTime @default(now())
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  createdBy   User?            @relation(fields: [createdById], references: [id])
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  posts       CollectionPost[]
+}
+
+model CollectionPost {
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  collectionId String
+  post         Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId       String
+  addedBy      String?
+  createdAt    DateTime   @default(now())
+
+  @@id([collectionId, postId])
+}
+
+model Report {
+  id             String     @id @default(cuid())
+  reportType     ReportType
+  targetDate     DateTime
+  dateRangeStart DateTime
+  dateRangeEnd   DateTime
+  reportJson     Json
+  reportText     String?
+  generatedAt    DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+
+  @@index([reportType, targetDate(sort: Desc)])
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  user      User          @relation(fields: [userId], references: [id])
+  userId    String
+  title     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id                String      @id @default(cuid())
+  session           ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId         String
+  role              ChatRole
+  content           String
+  /// 実際に使用した検索フィルタ・集計条件（グラウンディング記録）
+  queryConditions   Json?
+  referencedPostIds String[]    @default([])
+  createdAt         DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
+}
+
+model JobRun {
+  id            String    @id @default(cuid())
+  jobType       JobType
+  status        JobStatus @default(running)
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  targetCount   Int       @default(0)
+  successCount  Int       @default(0)
+  failureCount  Int       @default(0)
+  retryCount    Int       @default(0)
+  errors        Json?
+  apiUsed       String?
+  approxCostUsd Float?
+  triggeredBy   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([jobType, startedAt(sort: Desc)])
+}
+
+/// 非バージョン系設定のKV。APIキー等の秘密情報は保存しない（env varのみ）。
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+/// シェア受け口用の個人トークン。平文は発行時に一度だけ表示し、ハッシュのみ保存。
+model IngestToken {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  tokenHash  String    @unique
+  label      String?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+}

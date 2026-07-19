@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/jobs/compute-scores",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/internal/jobs/generate-report",
+      "schedule": "30 21 * * *"
+    }
+  ]
+}

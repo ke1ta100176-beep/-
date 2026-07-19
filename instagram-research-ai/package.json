@@ -1,0 +1,63 @@
+{
+  "name": "instagram-research-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "seed": "tsx prisma/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
+    "job:fetch": "tsx scripts/runJob.ts fetch-posts",
+    "job:scores": "tsx scripts/runJob.ts compute-scores",
+    "job:analyze": "tsx scripts/runJob.ts analyze-posts",
+    "job:report": "tsx scripts/runJob.ts generate-report",
+    "postinstall": "prisma generate",
+    "user:create": "tsx scripts/createUser.ts",
+    "vercel-build": "prisma migrate deploy && next build --turbopack"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.25.0",
+    "next": "15.5.20",
+    "next-auth": "^5.0.0-beta.31",
+    "papaparse": "^5.5.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "recharts": "^3.9.2",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.10",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.1",
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
