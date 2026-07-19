@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,18 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // 初回デプロイ直後（ユーザー0人）は初回セットアップ画面へ誘導する
+  useEffect(() => {
+    fetch("/api/setup")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.needsSetup) router.replace("/setup");
+      })
+      .catch(() => {
+        // 確認失敗時は通常のログイン画面のまま
+      });
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

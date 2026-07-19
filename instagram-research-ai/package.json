@@ -18,7 +18,8 @@
     "job:analyze": "tsx scripts/runJob.ts analyze-posts",
     "job:report": "tsx scripts/runJob.ts generate-report",
     "postinstall": "prisma generate",
-    "user:create": "tsx scripts/createUser.ts"
+    "user:create": "tsx scripts/createUser.ts",
+    "vercel-build": "prisma migrate deploy && next build --turbopack"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
