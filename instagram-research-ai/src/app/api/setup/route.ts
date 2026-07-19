@@ -71,12 +71,14 @@ export const dynamic = "force-dynamic";
 /** セットアップが必要かどうか（画面の出し分け用）。診断用にDBホスト名も返す。 */
 export async function GET() {
   const userCount = await prisma.user.count();
-  const hostMatch = (process.env.DATABASE_URL ?? "").match(/@([^:/?]+)/);
+  const dbUrl = process.env.DATABASE_URL ?? "";
+  const hostMatch = dbUrl.match(/@([^:/?]+)/);
   return NextResponse.json(
     {
       needsSetup: userCount === 0,
       userCount,
       dbHost: hostMatch?.[1] ?? "unknown",
+      pgbouncerParam: dbUrl.includes("pgbouncer=true"),
     },
     { headers: { "Cache-Control": "no-store, max-age=0" } }
   );
