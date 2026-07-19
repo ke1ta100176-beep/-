@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - "instagram-research-ai/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "instagram-research-ai/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: instagram-research-ai
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: instagram_research_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres@localhost:5432/instagram_research_test
+      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/instagram_research_test
+      AUTH_SECRET: ci-secret-0123456789abcdef0123456789
+      CRON_SECRET: ci-cron-secret-0123456789abcdef
+      AI_PROVIDER: stub
+      DATA_SOURCE: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: instagram-research-ai/package-lock.json
+      - run: npm ci
+      - run: npx prisma db push --skip-generate && npx prisma generate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
