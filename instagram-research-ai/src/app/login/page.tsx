@@ -38,7 +38,29 @@ function LoginForm() {
     });
     setLoading(false);
     if (result?.error) {
-      setError("メールアドレスまたはパスワードが正しくありません");
+      // 失敗原因を切り分けて、内部エラーと入力ミスを区別して表示する
+      try {
+        const res = await fetch("/api/login-diagnose", {
+          method: "POST",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (data.reason === "db_error") {
+          setError(
+            "データベース接続でエラーが発生しました。数秒待ってからもう一度お試しください。"
+          );
+        } else if (data.reason === "ok") {
+          setError(
+            "認証情報は正しいのに認証処理でエラーが発生しました（内部エラー）。この画面を再読み込みして再試行してください。"
+          );
+        } else {
+          setError("メールアドレスまたはパスワードが正しくありません");
+        }
+      } catch {
+        setError("メールアドレスまたはパスワードが正しくありません");
+      }
       return;
     }
     // オープンリダイレクト対策: 同一オリジンのパスのみ許可（"//evil.com" も拒否）

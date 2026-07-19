@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/setup",
   "/api/setup",
+  "/api/login-diagnose",
   "/api/auth",
   "/api/ingest",
   "/api/internal",
@@ -22,10 +23,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-  });
+  // 本番(https)ではCookie名が __Secure- 接頭辞付きになるため、
+  // secure/非secureの両方の名前を試す（httpsで読めず無限にログイン画面へ
+  // 戻される問題の修正）。
+  const token =
+    (await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET,
+      secureCookie: true,
+    })) ??
+    (await getToken({
+      req: request,
+      secret: process.env.AUTH_SECRET,
+      secureCookie: false,
+    }));
 
   if (!token) {
     if (pathname.startsWith("/api/")) {
