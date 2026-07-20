@@ -8,5 +8,8 @@
       "path": "/api/internal/jobs/generate-report",
       "schedule": "30 21 * * *"
     }
+  ],
+  "regions": [
+    "sin1"
   ]
 }
